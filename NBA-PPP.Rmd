@@ -4,26 +4,113 @@ author: "Andrew Tan"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+Load data into dataframe `possessions`:
+```{r}
+setwd("/Users/andrewtan/Projects/Sports\ Analytics/basketball-analytics")
+possessions <- read.csv("box_optical_poss.csv",
+                 header = TRUE,
+                 sep = ",")
+possessions[is.na(possessions)] <- 0
+possessions = possessions[as.character(possessions$possession.length) > "0:00", ]
 ```
 
-## R Markdown
+## NBA Points Per Possession
+Get the half court and transition PPP:
+1. LA Lakers PPP
+2. Opponent PPP
+3. NBA Teams PPP
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+To retrieve a the PPP of any team, run `getTeamPPP(team_id)`
+For example, Lakers' team PPP is `getTeamPPP(13)`
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r TeamPPP}
+getPPP = function(df=possessions) {
+  n = nrow(df)
+  points = sum(df$points)
+  ppp = points / n
+  return(ppp)
+}
+getTeamPPP = function(team_id, df=possessions) {
+  team = df[df$team.global.id == team_id, ]
+  ppp = getPPP(df=team)
+  return(ppp)
+}
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r TestTeamPPP}
+getTeamPPP(13)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Transition PPP
+
+Transition: Length of the possession is <= 8 seconds
+To retrieve transition PPP of any team, run `getTransitionPPP(team_id)`
+For example, Lakers' transition PPP is `getTransitionPPP(13)`
+
+```{r transitionPPP}
+getTransitionPPP = function(df=possessions, time="0:08") {
+  transition = df[as.character(df$possession.length) <= time, ]
+  ppp = getPPP(transition)
+  return(ppp)
+}
+
+getTeamTransitionPPP = function(team_id, df=possessions, time="0:08") {
+  team = df[df$team.global.id == team_id, ]
+  ppp = getTransitionPPP(df=team)
+  return(ppp)
+}
+```
+
+
+## Half Court PPP
+
+Half Court: Length of the possession is > 8 seconds
+To retrieve half court PPP of any team, run `getHalfCourtPPP(team_id)`
+For example, Lakers' half court PPP is `getHalfCourtPPP(13)`
+
+```{r halfcourtPPP}
+getHalfCourtPPP = function(df=possessions, time="0:08") {
+  halfCourt = df[as.character(df$possession.length) > time, ]
+  ppp = getPPP(halfCourt)
+  return(ppp)
+}
+
+getTeamHalfCourtPPP = function(team_id, df=possessions, time="0:08") {
+  team = df[df$team.global.id == team_id, ]
+  ppp = getHalfCourtPPP(df=team)
+  return(ppp)
+}
+```
+
+
+## Assignment
+
+Get the transition and halfcourt PPP of:
+1. Lakers
+2. Opponents
+3. NBA Average
+
+```{r assignment}
+getOpponentsDF = function(team_id, df=possessions) {
+  team = possessions[possessions$team.global.id == team_id, ]
+  gameCodes = unique(team$gamecode)
+  gamesDF = possessions[any(possessions$gamecode %in% gameCodes), ]
+  opponentsDF = gamesDF[gamesDF$team.global.id != team_id, ]
+  return(opponentsDF)
+}
+
+# Get Lakers Opponents
+lakersOpponentsDF = getOpponentsDF(13)
+
+
+# Print Values
+paste("Lakers Transition PPP: ", getTeamTransitionPPP(13))
+paste("Lakers Half Court PPP: ", getTeamHalfCourtPPP(13))
+
+paste("Opponent Transition PPP: ", getTransitionPPP(lakersOpponentsDF))
+paste("Opponent Half Court PPP: ", getHalfCourtPPP(lakersOpponentsDF))
+
+paste("NBA Transition PPP: ", getTransitionPPP(possessions))
+paste("NBA Half Court PPP: ", getHalfCourtPPP(possessions))
+```
